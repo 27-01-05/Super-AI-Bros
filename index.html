@@ -1,0 +1,282 @@
+# Super Marco Bros (Original Retro-Inspired Platformer)
+
+I can’t help make a near-identical copy of World 1-1 with the same music, sounds, exact layout, or assets from Super Mario Bros.
+
+But I *can* help you make an original retro-inspired platformer with:
+
+* Pixel graphics
+* A plumber-style hero
+* Goomba-like enemies
+* Coin collecting
+* Brick blocks
+* Retro beep music
+* NES-style gameplay feel
+* A custom level inspired by classic platformers
+
+Here’s a simple starter version using HTML + JavaScript.
+
+Save this as `index.html` and open it in your browser.
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Super Marco Bros</title>
+<style>
+body {
+    margin: 0;
+    background: black;
+    overflow: hidden;
+}
+canvas {
+    image-rendering: pixelated;
+    width: 960px;
+    height: 540px;
+    display: block;
+    margin: auto;
+    background: #5c94fc;
+}
+</style>
+</head>
+<body>
+<canvas id="game" width="320" height="180"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const TILE = 16;
+const GRAVITY = 0.4;
+
+const keys = {};
+
+addEventListener("keydown", e => keys[e.key] = true);
+addEventListener("keyup", e => keys[e.key] = false);
+
+const audio = new (window.AudioContext || window.webkitAudioContext)();
+
+function beep(freq, duration) {
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+
+    osc.connect(gain);
+    gain.connect(audio.destination);
+
+    osc.frequency.value = freq;
+    osc.type = "square";
+
+    gain.gain.value = 0.03;
+
+    osc.start();
+    osc.stop(audio.currentTime + duration);
+}
+
+function jumpSound() {
+    beep(440, 0.08);
+}
+
+function coinSound() {
+    beep(880, 0.05);
+}
+
+const player = {
+    x: 30,
+    y: 100,
+    w: 14,
+    h: 16,
+    vx: 0,
+    vy: 0,
+    grounded: false
+};
+
+const enemies = [
+    {x: 200, y: 140, w: 14, h: 14, dir: -1},
+    {x: 420, y: 140, w: 14, h: 14, dir: -1}
+];
+
+const coins = [
+    {x: 140, y: 90, taken: false},
+    {x: 300, y: 70, taken: false},
+    {x: 520, y: 100, taken: false}
+];
+
+const level = [
+"............................................................",
+"............................................................",
+"............................................................",
+"............................................................",
+"............................................................",
+"..................B.........................................",
+"............................................................",
+"..........B.......................B.........................",
+"............................................................",
+".......................BBB..................................",
+"............................................................",
+"............................................................",
+"............................................................",
+"............................................................",
+"............................................................",
+"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+];
+
+let cameraX = 0;
+let score = 0;
+
+function solidAt(x, y) {
+    const tx = Math.floor(x / TILE);
+    const ty = Math.floor(y / TILE);
+
+    if (ty < 0 || ty >= level.length) return false;
+    if (tx < 0 || tx >= level[0].length) return false;
+
+    const tile = level[ty][tx];
+    return tile === "G" || tile === "B";
+}
+
+function update() {
+    player.vx = 0;
+
+    if (keys["ArrowLeft"]) player.vx = -2;
+    if (keys["ArrowRight"]) player.vx = 2;
+
+    if ((keys[" "] || keys["ArrowUp"]) && player.grounded) {
+        player.vy = -7;
+        player.grounded = false;
+        jumpSound();
+    }
+
+    player.vy += GRAVITY;
+
+    player.x += player.vx;
+
+    if (solidAt(player.x, player.y) || solidAt(player.x + player.w, player.y)) {
+        player.x -= player.vx;
+    }
+
+    player.y += player.vy;
+
+    if (solidAt(player.x, player.y + player.h) ||
+        solidAt(player.x + player.w, player.y + player.h)) {
+
+        while (!solidAt(player.x, player.y + player.h) &&
+               !solidAt(player.x + player.w, player.y + player.h)) {
+            player.y += 1;
+        }
+
+        player.y -= 1;
+        player.vy = 0;
+        player.grounded = true;
+    } else {
+        player.grounded = false;
+    }
+
+    enemies.forEach(enemy => {
+        enemy.x += enemy.dir;
+
+        if (solidAt(enemy.x, enemy.y + enemy.h + 1) === false) {
+            enemy.dir *= -1;
+        }
+
+        if (
+            player.x < enemy.x + enemy.w &&
+            player.x + player.w > enemy.x &&
+            player.y < enemy.y + enemy.h &&
+            player.y + player.h > enemy.y
+        ) {
+            player.x = 30;
+            player.y = 100;
+        }
+    });
+
+    coins.forEach(c => {
+        if (!c.taken &&
+            player.x < c.x + 10 &&
+            player.x + player.w > c.x &&
+            player.y < c.y + 10 &&
+            player.y + player.h > c.y) {
+
+            c.taken = true;
+            score += 100;
+            coinSound();
+        }
+    });
+
+    cameraX = player.x - 100;
+
+    if (cameraX < 0) cameraX = 0;
+}
+
+function drawTile(x, y, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, TILE, TILE);
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let y = 0; y < level.length; y++) {
+        for (let x = 0; x < level[y].length; x++) {
+            const tile = level[y][x];
+
+            const px = x * TILE - cameraX;
+            const py = y * TILE;
+
+            if (tile === "G") drawTile(px, py, "#c07020");
+            if (tile === "B") drawTile(px, py, "#d09040");
+        }
+    }
+
+    coins.forEach(c => {
+        if (!c.taken) {
+            ctx.fillStyle = "gold";
+            ctx.fillRect(c.x - cameraX, c.y, 8, 8);
+        }
+    });
+
+    enemies.forEach(enemy => {
+        ctx.fillStyle = "#7a3b10";
+        ctx.fillRect(enemy.x - cameraX, enemy.y, enemy.w, enemy.h);
+
+        ctx.fillStyle = "black";
+        ctx.fillRect(enemy.x - cameraX + 3, enemy.y + 4, 2, 2);
+        ctx.fillRect(enemy.x - cameraX + 9, enemy.y + 4, 2, 2);
+    });
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(player.x - cameraX, player.y, player.w, player.h);
+
+    ctx.fillStyle = "white";
+    ctx.font = "10px monospace";
+    ctx.fillText("SUPER MARCO BROS", 10, 15);
+    ctx.fillText("SCORE: " + score, 10, 30);
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
+```
+
+## Controls
+
+* Arrow keys = Move
+* Space = Jump
+
+## Ideas To Add Later
+
+* Flagpole ending
+* Underground level
+* More enemies
+* Power-up mushrooms
+* Fireball attacks
+* Pixel title screen
+* Retro beep soundtrack
+* Animated bricks
+* Secret pipes
