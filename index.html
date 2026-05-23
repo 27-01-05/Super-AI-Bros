@@ -1,45 +1,29 @@
-# Super Marco Bros (Original Retro-Inspired Platformer)
-
-I can’t help make a near-identical copy of World 1-1 with the same music, sounds, exact layout, or assets from Super Mario Bros.
-
-But I *can* help you make an original retro-inspired platformer with:
-
-* Pixel graphics
-* A plumber-style hero
-* Goomba-like enemies
-* Coin collecting
-* Brick blocks
-* Retro beep music
-* NES-style gameplay feel
-* A custom level inspired by classic platformers
-
-Here’s a simple starter version using HTML + JavaScript.
-
-Save this as `index.html` and open it in your browser.
-
-```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Super Marco Bros</title>
+
 <style>
-body {
-    margin: 0;
-    background: black;
-    overflow: hidden;
+body{
+    margin:0;
+    overflow:hidden;
+    background:black;
 }
-canvas {
-    image-rendering: pixelated;
-    width: 960px;
-    height: 540px;
-    display: block;
-    margin: auto;
-    background: #5c94fc;
+
+canvas{
+    display:block;
+    margin:auto;
+    background:#5c94fc;
+    width:960px;
+    height:540px;
+    image-rendering:pixelated;
 }
 </style>
 </head>
+
 <body>
+
 <canvas id="game" width="320" height="180"></canvas>
 
 <script>
@@ -51,20 +35,25 @@ const GRAVITY = 0.4;
 
 const keys = {};
 
-addEventListener("keydown", e => keys[e.key] = true);
-addEventListener("keyup", e => keys[e.key] = false);
+addEventListener("keydown", e=>{
+    keys[e.key] = true;
+});
+
+addEventListener("keyup", e=>{
+    keys[e.key] = false;
+});
 
 const audio = new (window.AudioContext || window.webkitAudioContext)();
 
-function beep(freq, duration) {
+function beep(freq, duration){
     const osc = audio.createOscillator();
     const gain = audio.createGain();
 
+    osc.type = "square";
+    osc.frequency.value = freq;
+
     osc.connect(gain);
     gain.connect(audio.destination);
-
-    osc.frequency.value = freq;
-    osc.type = "square";
 
     gain.gain.value = 0.03;
 
@@ -72,263 +61,73 @@ function beep(freq, duration) {
     osc.stop(audio.currentTime + duration);
 }
 
-function jumpSound() {
-    beep(440, 0.08);
-}
+const music = [
+262,330,392,523,
+392,330,262,330,
+349,440,523,440,
+392,330,294,262
+];
 
-function coinSound() {
-    beep(880, 0.05);
-}
+let noteIndex = 0;
+
+setInterval(()=>{
+    beep(music[noteIndex],0.12);
+
+    noteIndex++;
+
+    if(noteIndex >= music.length){
+        noteIndex = 0;
+    }
+},180);
 
 const player = {
-    x: 30,
-    y: 100,
-    w: 14,
-    h: 16,
-    vx: 0,
-    vy: 0,
-    grounded: false
+    x:40,
+    y:140,
+    w:14,
+    h:16,
+    vx:0,
+    vy:0,
+    grounded:false
 };
 
 const enemies = [
-    {x: 200, y: 140, w: 14, h: 14, dir: -1},
-    {x: 420, y: 140, w: 14, h: 14, dir: -1}
+    {
+        x:240,
+        y:208,
+        w:14,
+        h:14,
+        dir:-1,
+        type:"goomba",
+        dead:false
+    },
+
+    {
+        x:420,
+        y:206,
+        w:16,
+        h:16,
+        dir:-1,
+        type:"turtle",
+        shell:false,
+        shellSpeed:0
+    },
+
+    {
+        x:700,
+        y:208,
+        w:14,
+        h:14,
+        dir:-1,
+        type:"goomba",
+        dead:false
+    }
 ];
 
 const coins = [
-    {x: 140, y: 90, taken: false},
-    {x: 300, y: 70, taken: false},
-    {x: 520, y: 100, taken: false}
-];
-
-const level = [
-"............................................................",
-"............................................................",
-"............................................................",
-"............................................................",
-"............................................................",
-"..................B.........................................",
-"............................................................",
-"..........B.......................B.........................",
-"............................................................",
-".......................BBB..................................",
-"............................................................",
-"............................................................",
-"............................................................",
-"............................................................",
-"............................................................",
-"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
-];
-
-let cameraX = 0;
-let score = 0;
-
-function solidAt(x, y) {
-    const tx = Math.floor(x / TILE);
-    const ty = Math.floor(y / TILE);
-
-    if (ty < 0 || ty >= level.length) return false;
-    if (tx < 0 || tx >= level[0].length) return false;
-
-    const tile = level[ty][tx];
-    return tile === "G" || tile === "B";
-}
-
-function update() {
-    player.vx = 0;
-
-    if (keys["ArrowLeft"]) player.vx = -2;
-    if (keys["ArrowRight"]) player.vx = 2;
-
-    if ((keys[" "] || keys["ArrowUp"]) && player.grounded) {
-        player.vy = -7;
-        player.grounded = false;
-        jumpSound();
-    }
-
-    player.vy += GRAVITY;
-
-    player.x += player.vx;
-
-    if (solidAt(player.x, player.y) || solidAt(player.x + player.w, player.y)) {
-        player.x -= player.vx;
-    }
-
-    player.y += player.vy;
-
-    if (solidAt(player.x, player.y + player.h) ||
-        solidAt(player.x + player.w, player.y + player.h)) {
-
-        while (!solidAt(player.x, player.y + player.h) &&
-               !solidAt(player.x + player.w, player.y + player.h)) {
-            player.y += 1;
-        }
-
-        player.y -= 1;
-        player.vy = 0;
-        player.grounded = true;
-    } else {
-        player.grounded = false;
-    }
-
-    enemies.forEach(enemy => {
-        enemy.x += enemy.dir;
-
-        if (solidAt(enemy.x, enemy.y + enemy.h + 1) === false) {
-            enemy.dir *= -1;
-        }
-
-        if (
-            player.x < enemy.x + enemy.w &&
-            player.x + player.w > enemy.x &&
-            player.y < enemy.y + enemy.h &&
-            player.y + player.h > enemy.y
-        ) {
-            player.x = 30;
-            player.y = 100;
-        }
-    });
-
-    coins.forEach(c => {
-        if (!c.taken &&
-            player.x < c.x + 10 &&
-            player.x + player.w > c.x &&
-            player.y < c.y + 10 &&
-            player.y + player.h > c.y) {
-
-            c.taken = true;
-            score += 100;
-            coinSound();
-        }
-    });
-
-    cameraX = player.x - 100;
-
-    if (cameraX < 0) cameraX = 0;
-}
-
-function drawTile(x, y, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, TILE, TILE);
-}
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (let y = 0; y < level.length; y++) {
-        for (let x = 0; x < level[y].length; x++) {
-            const tile = level[y][x];
-
-            const px = x * TILE - cameraX;
-            const py = y * TILE;
-
-            if (tile === "G") drawTile(px, py, "#c07020");
-            if (tile === "B") drawTile(px, py, "#d09040");
-        }
-    }
-
-    coins.forEach(c => {
-        if (!c.taken) {
-            ctx.fillStyle = "gold";
-            ctx.fillRect(c.x - cameraX, c.y, 8, 8);
-        }
-    });
-
-    enemies.forEach(enemy => {
-        ctx.fillStyle = "#7a3b10";
-        ctx.fillRect(enemy.x - cameraX, enemy.y, enemy.w, enemy.h);
-
-        ctx.fillStyle = "black";
-        ctx.fillRect(enemy.x - cameraX + 3, enemy.y + 4, 2, 2);
-        ctx.fillRect(enemy.x - cameraX + 9, enemy.y + 4, 2, 2);
-    });
-
-    ctx.fillStyle = "red";
-    ctx.fillRect(player.x - cameraX, player.y, player.w, player.h);
-
-    ctx.fillStyle = "white";
-    ctx.font = "10px monospace";
-    ctx.fillText("SUPER MARCO BROS", 10, 15);
-    ctx.fillText("SCORE: " + score, 10, 30);
-}
-
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
-
-loop();
-</script>
-</body>
-</html>
-```
-
-## Controls
-
-* Arrow keys = Move
-* Space = Jump
-
-## Updated Gameplay Features
-
-Here are the improvements you wanted added to the game:
-
-* Proper visible ground across the level
-* Enemies move back and forth naturally
-* Player always renders clearly on screen
-* Blocks are evenly spaced in the air
-* Jumping on enemies squishes them
-* Turtle enemies retreat into shells
-* Walking into turtle shells kicks them forward
-* Better collision handling
-* Cleaner retro platformer feel
-
-Replace the ENTIRE JavaScript section with this improved version:
-
-```html
-<script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-
-const TILE = 16;
-const GRAVITY = 0.4;
-
-const keys = {};
-addEventListener("keydown", e => keys[e.key] = true);
-addEventListener("keyup", e => keys[e.key] = false);
-
-const audio = new (window.AudioContext || window.webkitAudioContext)();
-
-function beep(freq, duration) {
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
-
-    osc.type = "square";
-    osc.frequency.value = freq;
-
-    osc.connect(gain);
-    gain.connect(audio.destination);
-
-    gain.gain.value = 0.03;
-
-    osc.start();
-    osc.stop(audio.currentTime + duration);
-}
-
-const player = {
-    x: 40,
-    y: 80,
-    w: 14,
-    h: 16,
-    vx: 0,
-    vy: 0,
-    grounded: false
-};
-
-const enemies = [
-    {x: 240, y: 224, w: 14, h: 14, dir: -1, type: "goomba", dead: false},
-    {x: 420, y: 224, w: 16, h: 16, dir: -1, type: "turtle", shell: false, shellSpeed: 0},
-    {x: 700, y: 224, w: 14, h: 14, dir: -1, type: "goomba", dead: false}
+    {x:150,y:120,taken:false},
+    {x:300,y:90,taken:false},
+    {x:500,y:120,taken:false},
+    {x:660,y:80,taken:false}
 ];
 
 const level = [
@@ -352,91 +151,126 @@ const level = [
 
 let cameraX = 0;
 
-function solidAt(x, y) {
+function solidAt(x,y){
+
     const tx = Math.floor(x / TILE);
     const ty = Math.floor(y / TILE);
 
-    if (ty < 0 || ty >= level.length) return false;
-    if (tx < 0 || tx >= level[0].length) return false;
+    if(ty < 0 || ty >= level.length) return false;
+    if(tx < 0 || tx >= level[0].length) return false;
 
     const tile = level[ty][tx];
+
     return tile === "G" || tile === "B";
 }
 
-function stompEnemy(enemy) {
-    beep(180, 0.08);
+function stompEnemy(enemy){
 
-    if (enemy.type === "goomba") {
+    beep(180,0.08);
+
+    if(enemy.type === "goomba"){
         enemy.dead = true;
     }
 
-    if (enemy.type === "turtle") {
-        if (!enemy.shell) {
+    if(enemy.type === "turtle"){
+
+        if(!enemy.shell){
+
             enemy.shell = true;
             enemy.shellSpeed = 0;
             enemy.h = 10;
-        } else {
+
+        }else{
+
             enemy.shellSpeed = player.x < enemy.x ? 5 : -5;
+
         }
     }
 
     player.vy = -5;
 }
 
-function hurtPlayer() {
+function hurtPlayer(){
+
     player.x = 40;
-    player.y = 80;
+    player.y = 140;
     player.vx = 0;
     player.vy = 0;
 }
 
-function update() {
+function update(){
+
     player.vx = 0;
 
-    if (keys["ArrowLeft"]) player.vx = -2;
-    if (keys["ArrowRight"]) player.vx = 2;
+    if(keys["ArrowLeft"]){
+        player.vx = -2;
+    }
 
-    if ((keys[" "] || keys["ArrowUp"]) && player.grounded) {
+    if(keys["ArrowRight"]){
+        player.vx = 2;
+    }
+
+    if((keys[" "] || keys["ArrowUp"]) && player.grounded){
+
         player.vy = -7;
         player.grounded = false;
-        beep(440, 0.08);
+
+        beep(440,0.08);
     }
 
     player.vy += GRAVITY;
 
     player.x += player.vx;
-
     player.y += player.vy;
 
-    if (solidAt(player.x, player.y + player.h) ||
-        solidAt(player.x + player.w, player.y + player.h)) {
+    if(
+        solidAt(player.x, player.y + player.h) ||
+        solidAt(player.x + player.w, player.y + player.h)
+    ){
 
-        player.y = Math.floor((player.y + player.h) / TILE) * TILE - player.h;
+        player.y =
+            Math.floor((player.y + player.h) / TILE) * TILE - player.h;
+
         player.vy = 0;
         player.grounded = true;
-    } else {
+
+    }else{
+
         player.grounded = false;
     }
 
-    enemies.forEach(enemy => {
-        if (enemy.dead) return;
+    enemies.forEach(enemy=>{
 
-        if (enemy.type === "goomba") {
-            enemy.x += enemy.dir;
+        if(enemy.dead) return;
+
+        if(enemy.type === "goomba"){
+
+            enemy.x += enemy.dir * 1.1;
+
         }
 
-        if (enemy.type === "turtle") {
-            if (enemy.shell && enemy.shellSpeed !== 0) {
+        if(enemy.type === "turtle"){
+
+            if(enemy.shell && enemy.shellSpeed !== 0){
+
                 enemy.x += enemy.shellSpeed;
-            } else {
+
+            }else{
+
                 enemy.x += enemy.dir;
+
             }
         }
 
-        const frontX = enemy.dir > 0 ? enemy.x + enemy.w + 1 : enemy.x - 1;
+        const frontX =
+            enemy.dir > 0
+            ? enemy.x + enemy.w + 1
+            : enemy.x - 1;
 
-        if (!solidAt(frontX, enemy.y + enemy.h + 2)) {
+        if(!solidAt(frontX, enemy.y + enemy.h + 2)){
+
             enemy.dir *= -1;
+
         }
 
         const touching =
@@ -445,69 +279,163 @@ function update() {
             player.y < enemy.y + enemy.h &&
             player.y + player.h > enemy.y;
 
-        if (touching) {
-            const stomp = player.vy > 0 && player.y < enemy.y;
+        if(touching){
 
-            if (stomp) {
+            const stomp =
+                player.vy > 0 &&
+                player.y < enemy.y;
+
+            if(stomp){
+
                 stompEnemy(enemy);
-            } else {
+
+            }else{
+
                 hurtPlayer();
+
             }
+        }
+    });
+
+    coins.forEach(c=>{
+
+        if(
+            !c.taken &&
+            player.x < c.x + 8 &&
+            player.x + player.w > c.x &&
+            player.y < c.y + 8 &&
+            player.y + player.h > c.y
+        ){
+
+            c.taken = true;
+
+            beep(900,0.05);
         }
     });
 
     cameraX = player.x - 120;
 
-    if (cameraX < 0) cameraX = 0;
+    if(cameraX < 0){
+        cameraX = 0;
+    }
 }
 
-function drawTile(x, y, color) {
+function drawTile(x,y,color){
+
     ctx.fillStyle = color;
-    ctx.fillRect(x, y, TILE, TILE);
+    ctx.fillRect(x,y,TILE,TILE);
 }
 
-function drawPlayer() {
+function drawPlayer(){
+
     ctx.fillStyle = "red";
-    ctx.fillRect(player.x - cameraX, player.y, player.w, player.h);
+    ctx.fillRect(
+        player.x - cameraX,
+        player.y,
+        player.w,
+        player.h
+    );
 
     ctx.fillStyle = "#ffccaa";
-    ctx.fillRect(player.x - cameraX + 3, player.y + 3, 8, 6);
+
+    ctx.fillRect(
+        player.x - cameraX + 3,
+        player.y + 3,
+        8,
+        6
+    );
 
     ctx.fillStyle = "blue";
-    ctx.fillRect(player.x - cameraX + 3, player.y + 10, 8, 5);
+
+    ctx.fillRect(
+        player.x - cameraX + 3,
+        player.y + 10,
+        8,
+        5
+    );
 }
 
-function drawEnemy(enemy) {
-    if (enemy.dead) {
+function drawEnemy(enemy){
+
+    if(enemy.dead){
+
         ctx.fillStyle = "#5c2d0c";
-        ctx.fillRect(enemy.x - cameraX, enemy.y + 8, enemy.w, 5);
+
+        ctx.fillRect(
+            enemy.x - cameraX,
+            enemy.y + 8,
+            enemy.w,
+            5
+        );
+
         return;
     }
 
-    if (enemy.type === "goomba") {
+    if(enemy.type === "goomba"){
+
         ctx.fillStyle = "#7a3b10";
-        ctx.fillRect(enemy.x - cameraX, enemy.y, enemy.w, enemy.h);
+
+        ctx.fillRect(
+            enemy.x - cameraX,
+            enemy.y,
+            enemy.w,
+            enemy.h
+        );
     }
 
-    if (enemy.type === "turtle") {
-        ctx.fillStyle = enemy.shell ? "green" : "#00aa00";
-        ctx.fillRect(enemy.x - cameraX, enemy.y, enemy.w, enemy.h);
+    if(enemy.type === "turtle"){
+
+        ctx.fillStyle =
+            enemy.shell
+            ? "green"
+            : "#00aa00";
+
+        ctx.fillRect(
+            enemy.x - cameraX,
+            enemy.y,
+            enemy.w,
+            enemy.h
+        );
     }
 }
 
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function draw(){
 
-    for (let y = 0; y < level.length; y++) {
-        for (let x = 0; x < level[y].length; x++) {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    for(let y=0;y<level.length;y++){
+
+        for(let x=0;x<level[y].length;x++){
+
             const tile = level[y][x];
+
             const px = x * TILE - cameraX;
             const py = y * TILE;
 
-            if (tile === "G") drawTile(px, py, "#c07020");
-            if (tile === "B") drawTile(px, py, "#d09040");
+            if(tile === "G"){
+                drawTile(px,py,"#c07020");
+            }
+
+            if(tile === "B"){
+                drawTile(px,py,"#d09040");
+            }
         }
     }
+
+    coins.forEach(c=>{
+
+        if(!c.taken){
+
+            ctx.fillStyle = "gold";
+
+            ctx.fillRect(
+                c.x - cameraX,
+                c.y,
+                8,
+                8
+            );
+        }
+    });
 
     enemies.forEach(drawEnemy);
 
@@ -515,17 +443,36 @@ function draw() {
 
     ctx.fillStyle = "white";
     ctx.font = "10px monospace";
-    ctx.fillText("SUPER MARCO BROS", 10, 15);
+
+    ctx.fillText(
+        "SUPER MARCO BROS",
+        10,
+        15
+    );
+
+    ctx.fillText(
+        "ARROWS TO MOVE",
+        10,
+        28
+    );
+
+    ctx.fillText(
+        "SPACE TO JUMP",
+        10,
+        41
+    );
 }
 
-function loop() {
+function loop(){
+
     update();
     draw();
+
     requestAnimationFrame(loop);
 }
 
 loop();
 </script>
-```
 
-Now the game behaves much more like a classic retro platformer with proper enemy stomping and turtle shell kicking.
+</body>
+</html>
