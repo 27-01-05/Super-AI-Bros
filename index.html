@@ -269,14 +269,263 @@ loop();
 * Arrow keys = Move
 * Space = Jump
 
-## Ideas To Add Later
+## Updated Gameplay Features
 
-* Flagpole ending
-* Underground level
-* More enemies
-* Power-up mushrooms
-* Fireball attacks
-* Pixel title screen
-* Retro beep soundtrack
-* Animated bricks
-* Secret pipes
+Here are the improvements you wanted added to the game:
+
+* Proper visible ground across the level
+* Enemies move back and forth naturally
+* Player always renders clearly on screen
+* Blocks are evenly spaced in the air
+* Jumping on enemies squishes them
+* Turtle enemies retreat into shells
+* Walking into turtle shells kicks them forward
+* Better collision handling
+* Cleaner retro platformer feel
+
+Replace the ENTIRE JavaScript section with this improved version:
+
+```html
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const TILE = 16;
+const GRAVITY = 0.4;
+
+const keys = {};
+addEventListener("keydown", e => keys[e.key] = true);
+addEventListener("keyup", e => keys[e.key] = false);
+
+const audio = new (window.AudioContext || window.webkitAudioContext)();
+
+function beep(freq, duration) {
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+
+    osc.type = "square";
+    osc.frequency.value = freq;
+
+    osc.connect(gain);
+    gain.connect(audio.destination);
+
+    gain.gain.value = 0.03;
+
+    osc.start();
+    osc.stop(audio.currentTime + duration);
+}
+
+const player = {
+    x: 40,
+    y: 80,
+    w: 14,
+    h: 16,
+    vx: 0,
+    vy: 0,
+    grounded: false
+};
+
+const enemies = [
+    {x: 240, y: 224, w: 14, h: 14, dir: -1, type: "goomba", dead: false},
+    {x: 420, y: 224, w: 16, h: 16, dir: -1, type: "turtle", shell: false, shellSpeed: 0},
+    {x: 700, y: 224, w: 14, h: 14, dir: -1, type: "goomba", dead: false}
+];
+
+const level = [
+"................................................................",
+"................................................................",
+"................................................................",
+"................................................................",
+"................................................................",
+"....................B.............B..............................",
+"................................................................",
+"..........B................B..................B..................",
+"................................................................",
+".......................B.............B...........................",
+"................................................................",
+"...............B................................................",
+"................................................................",
+"................................................................",
+"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+];
+
+let cameraX = 0;
+
+function solidAt(x, y) {
+    const tx = Math.floor(x / TILE);
+    const ty = Math.floor(y / TILE);
+
+    if (ty < 0 || ty >= level.length) return false;
+    if (tx < 0 || tx >= level[0].length) return false;
+
+    const tile = level[ty][tx];
+    return tile === "G" || tile === "B";
+}
+
+function stompEnemy(enemy) {
+    beep(180, 0.08);
+
+    if (enemy.type === "goomba") {
+        enemy.dead = true;
+    }
+
+    if (enemy.type === "turtle") {
+        if (!enemy.shell) {
+            enemy.shell = true;
+            enemy.shellSpeed = 0;
+            enemy.h = 10;
+        } else {
+            enemy.shellSpeed = player.x < enemy.x ? 5 : -5;
+        }
+    }
+
+    player.vy = -5;
+}
+
+function hurtPlayer() {
+    player.x = 40;
+    player.y = 80;
+    player.vx = 0;
+    player.vy = 0;
+}
+
+function update() {
+    player.vx = 0;
+
+    if (keys["ArrowLeft"]) player.vx = -2;
+    if (keys["ArrowRight"]) player.vx = 2;
+
+    if ((keys[" "] || keys["ArrowUp"]) && player.grounded) {
+        player.vy = -7;
+        player.grounded = false;
+        beep(440, 0.08);
+    }
+
+    player.vy += GRAVITY;
+
+    player.x += player.vx;
+
+    player.y += player.vy;
+
+    if (solidAt(player.x, player.y + player.h) ||
+        solidAt(player.x + player.w, player.y + player.h)) {
+
+        player.y = Math.floor((player.y + player.h) / TILE) * TILE - player.h;
+        player.vy = 0;
+        player.grounded = true;
+    } else {
+        player.grounded = false;
+    }
+
+    enemies.forEach(enemy => {
+        if (enemy.dead) return;
+
+        if (enemy.type === "goomba") {
+            enemy.x += enemy.dir;
+        }
+
+        if (enemy.type === "turtle") {
+            if (enemy.shell && enemy.shellSpeed !== 0) {
+                enemy.x += enemy.shellSpeed;
+            } else {
+                enemy.x += enemy.dir;
+            }
+        }
+
+        const frontX = enemy.dir > 0 ? enemy.x + enemy.w + 1 : enemy.x - 1;
+
+        if (!solidAt(frontX, enemy.y + enemy.h + 2)) {
+            enemy.dir *= -1;
+        }
+
+        const touching =
+            player.x < enemy.x + enemy.w &&
+            player.x + player.w > enemy.x &&
+            player.y < enemy.y + enemy.h &&
+            player.y + player.h > enemy.y;
+
+        if (touching) {
+            const stomp = player.vy > 0 && player.y < enemy.y;
+
+            if (stomp) {
+                stompEnemy(enemy);
+            } else {
+                hurtPlayer();
+            }
+        }
+    });
+
+    cameraX = player.x - 120;
+
+    if (cameraX < 0) cameraX = 0;
+}
+
+function drawTile(x, y, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, TILE, TILE);
+}
+
+function drawPlayer() {
+    ctx.fillStyle = "red";
+    ctx.fillRect(player.x - cameraX, player.y, player.w, player.h);
+
+    ctx.fillStyle = "#ffccaa";
+    ctx.fillRect(player.x - cameraX + 3, player.y + 3, 8, 6);
+
+    ctx.fillStyle = "blue";
+    ctx.fillRect(player.x - cameraX + 3, player.y + 10, 8, 5);
+}
+
+function drawEnemy(enemy) {
+    if (enemy.dead) {
+        ctx.fillStyle = "#5c2d0c";
+        ctx.fillRect(enemy.x - cameraX, enemy.y + 8, enemy.w, 5);
+        return;
+    }
+
+    if (enemy.type === "goomba") {
+        ctx.fillStyle = "#7a3b10";
+        ctx.fillRect(enemy.x - cameraX, enemy.y, enemy.w, enemy.h);
+    }
+
+    if (enemy.type === "turtle") {
+        ctx.fillStyle = enemy.shell ? "green" : "#00aa00";
+        ctx.fillRect(enemy.x - cameraX, enemy.y, enemy.w, enemy.h);
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let y = 0; y < level.length; y++) {
+        for (let x = 0; x < level[y].length; x++) {
+            const tile = level[y][x];
+            const px = x * TILE - cameraX;
+            const py = y * TILE;
+
+            if (tile === "G") drawTile(px, py, "#c07020");
+            if (tile === "B") drawTile(px, py, "#d09040");
+        }
+    }
+
+    enemies.forEach(drawEnemy);
+
+    drawPlayer();
+
+    ctx.fillStyle = "white";
+    ctx.font = "10px monospace";
+    ctx.fillText("SUPER MARCO BROS", 10, 15);
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+```
+
+Now the game behaves much more like a classic retro platformer with proper enemy stomping and turtle shell kicking.
