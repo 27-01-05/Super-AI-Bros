@@ -1,464 +1,132 @@
-# Retro Dash Platformer
-
-Save this as `index.html` and open it in your browser.
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Retro Dash Platformer</title>
+<title>THE STATIC ROOM</title>
 <style>
-body {
-    margin: 0;
-    overflow: hidden;
-    background: black;
-}
+    body {
+        margin: 0;
+        background: black;
+        color: #b6ffda;
+        font-family: "Courier New", monospace;
+        overflow: hidden;
+    }
 
-canvas {
-    display: block;
-    margin: auto;
-    background: linear-gradient(#6ec6ff, #d7f5ff);
-    image-rendering: pixelated;
-    width: 960px;
-    height: 540px;
-}
+    .container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 2rem;
+        letter-spacing: 4px;
+        color: #ff4d6d;
+        text-shadow: 0 0 10px #ff4d6d;
+        animation: flicker 2s infinite;
+    }
+
+    #output {
+        margin-top: 40px;
+        font-size: 1.2rem;
+        max-width: 700px;
+        padding: 20px;
+        border: 1px solid #333;
+        background: rgba(255,255,255,0.02);
+        box-shadow: 0 0 20px rgba(0,255,150,0.1);
+        min-height: 100px;
+    }
+
+    button {
+        margin-top: 30px;
+        padding: 10px 20px;
+        background: none;
+        border: 1px solid #b6ffda;
+        color: #b6ffda;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    button:hover {
+        background: #b6ffda;
+        color: black;
+    }
+
+    @keyframes flicker {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+        70% { opacity: 0.7; }
+    }
+
+    .glitch {
+        animation: glitch 0.3s infinite;
+    }
+
+    @keyframes glitch {
+        0% { transform: translate(0); }
+        20% { transform: translate(-2px, 2px); }
+        40% { transform: translate(2px, -2px); }
+        60% { transform: translate(-1px, 1px); }
+        80% { transform: translate(1px, -1px); }
+        100% { transform: translate(0); }
+    }
 </style>
 </head>
 <body>
-<canvas id="game" width="320" height="180"></canvas>
+
+<div class="container">
+    <h1 class="glitch">THE STATIC ROOM</h1>
+    <div id="output">...</div>
+    <button onclick="generate()">LISTEN</button>
+</div>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-
-const TILE = 16;
-const GRAVITY = 0.45;
-
-const keys = {};
-
-addEventListener("keydown", e => {
-    keys[e.key] = true;
-
-    if(audio.state === "suspended") {
-        audio.resume();
-    }
-});
-
-addEventListener("keyup", e => {
-    keys[e.key] = false;
-});
-
-const audio = new (window.AudioContext || window.webkitAudioContext)();
-
-function beep(freq, duration, volume=0.03) {
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
-
-    osc.type = "square";
-    osc.frequency.value = freq;
-
-    osc.connect(gain);
-    gain.connect(audio.destination);
-
-    gain.gain.value = volume;
-
-    osc.start();
-    osc.stop(audio.currentTime + duration);
-}
-
-const music = [
-    262, 330, 392, 523,
-    494, 440, 392, 330,
-    349, 440, 523, 659,
-    523, 440, 392, 330
+const subjects = [
+    "The ceiling", "A forgotten door", "Your reflection", "The humming wall",
+    "The third shadow", "An unseen corridor", "The clock that isn't there",
+    "The voice behind silence", "A blinking hallway light", "The empty chair"
 ];
 
-let musicIndex = 0;
-
-setInterval(() => {
-    beep(music[musicIndex], 0.10, 0.015);
-    musicIndex++;
-
-    if(musicIndex >= music.length) {
-        musicIndex = 0;
-    }
-}, 170);
-
-const player = {
-    x: 40,
-    y: 120,
-    w: 14,
-    h: 16,
-    vx: 0,
-    vy: 0,
-    grounded: false,
-    score: 0
-};
-
-const enemies = [
-    {
-        x: 260,
-        y: 208,
-        w: 14,
-        h: 14,
-        dir: -1,
-        type: "blob",
-        dead: false
-    },
-
-    {
-        x: 500,
-        y: 208,
-        w: 16,
-        h: 16,
-        dir: -1,
-        type: "roller",
-        shell: false,
-        speed: 0
-    }
+const verbs = [
+    "remembers", "forgets", "breathes through", "waits inside", "folds into",
+    "whispers to", "leaks from", "pretends to be", "counts backwards through",
+    "dreams of"
 ];
 
-const coins = [
-    {x: 180, y: 120, taken: false},
-    {x: 320, y: 90, taken: false},
-    {x: 460, y: 120, taken: false},
-    {x: 620, y: 70, taken: false},
-    {x: 760, y: 120, taken: false}
+const objects = [
+    "tomorrow's noise", "a broken direction", "invisible footsteps",
+    "a color that doesn't exist", "your name backwards", "static rain",
+    "a soft emergency", "glass thoughts", "unfinished echoes",
+    "the idea of leaving"
 ];
 
-const level = [
-"................................................................................",
-"................................................................................",
-"................................................................................",
-"................................................................................",
-"................................................................................",
-"..........................P.....................................................",
-"................................................................................",
-"..............P....................P.........................P.................",
-"................................................................................",
-"...........................................P....................................",
-"................................................................................",
-".......................P........................................................",
-"................................................................................",
-"................................................................................",
-"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
-"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+const endings = [
+    "and nothing notices.", "but it already happened yesterday.",
+    "you were never supposed to read this.", "it repeats when you blink.",
+    "the room agrees silently.", "do not respond.", "this is still ongoing.",
+    "it is already inside.", "there is no outside.", "you understand incorrectly."
 ];
 
-let cameraX = 0;
-
-function solidAt(x, y) {
-    const tx = Math.floor(x / TILE);
-    const ty = Math.floor(y / TILE);
-
-    if(ty < 0 || ty >= level.length) return false;
-    if(tx < 0 || tx >= level[0].length) return false;
-
-    const tile = level[ty][tx];
-
-    return tile === "G" || tile === "P";
+function pick(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function resetPlayer() {
-    player.x = 40;
-    player.y = 120;
-    player.vx = 0;
-    player.vy = 0;
+function generate() {
+    let sentence = `${pick(subjects)} ${pick(verbs)} ${pick(objects)} ${pick(endings)}`;
+    
+    const output = document.getElementById("output");
+    output.innerText = sentence;
+
+    // random flicker effect
+    output.style.opacity = 0.2;
+    setTimeout(() => {
+        output.style.opacity = 1;
+    }, 100);
 }
-
-function stompEnemy(enemy) {
-    beep(180, 0.08);
-
-    if(enemy.type === "blob") {
-        enemy.dead = true;
-    }
-
-    if(enemy.type === "roller") {
-        if(!enemy.shell) {
-            enemy.shell = true;
-            enemy.h = 10;
-            enemy.speed = 0;
-        } else {
-            enemy.speed = player.x < enemy.x ? 5 : -5;
-        }
-    }
-
-    player.vy = -6;
-}
-
-function update() {
-
-    player.vx = 0;
-
-    if(keys["ArrowLeft"]) {
-        player.vx = -2.5;
-    }
-
-    if(keys["ArrowRight"]) {
-        player.vx = 2.5;
-    }
-
-    if((keys[" "] || keys["ArrowUp"]) && player.grounded) {
-        player.vy = -8;
-        player.grounded = false;
-        beep(500, 0.07);
-    }
-
-    player.vy += GRAVITY;
-
-    player.x += player.vx;
-    player.y += player.vy;
-
-    if(
-        solidAt(player.x, player.y + player.h) ||
-        solidAt(player.x + player.w, player.y + player.h)
-    ) {
-        player.y = Math.floor((player.y + player.h) / TILE) * TILE - player.h;
-        player.vy = 0;
-        player.grounded = true;
-    } else {
-        player.grounded = false;
-    }
-
-    if(player.y > canvas.height + 100) {
-        resetPlayer();
-    }
-
-    enemies.forEach(enemy => {
-
-        if(enemy.dead) return;
-
-        if(enemy.type === "blob") {
-            enemy.x += enemy.dir * 1.2;
-        }
-
-        if(enemy.type === "roller") {
-            if(enemy.shell && enemy.speed !== 0) {
-                enemy.x += enemy.speed;
-            } else {
-                enemy.x += enemy.dir;
-            }
-        }
-
-        const frontX = enemy.dir > 0
-            ? enemy.x + enemy.w + 1
-            : enemy.x - 1;
-
-        if(!solidAt(frontX, enemy.y + enemy.h + 2)) {
-            enemy.dir *= -1;
-        }
-
-        const touching =
-            player.x < enemy.x + enemy.w &&
-            player.x + player.w > enemy.x &&
-            player.y < enemy.y + enemy.h &&
-            player.y + player.h > enemy.y;
-
-        if(touching) {
-
-            const stomp = player.vy > 0 && player.y < enemy.y;
-
-            if(stomp) {
-                stompEnemy(enemy);
-            } else {
-                resetPlayer();
-            }
-        }
-    });
-
-    coins.forEach(c => {
-        if(
-            !c.taken &&
-            player.x < c.x + 8 &&
-            player.x + player.w > c.x &&
-            player.y < c.y + 8 &&
-            player.y + player.h > c.y
-        ) {
-            c.taken = true;
-            player.score += 100;
-            beep(900, 0.05);
-        }
-    });
-
-    cameraX = player.x - 120;
-
-    if(cameraX < 0) {
-        cameraX = 0;
-    }
-}
-
-function drawTile(x, y, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, TILE, TILE);
-}
-
-function drawBackground() {
-
-    ctx.fillStyle = "white";
-
-    ctx.fillRect(40 - cameraX * 0.3, 20, 30, 10);
-    ctx.fillRect(60 - cameraX * 0.3, 15, 30, 12);
-
-    ctx.fillRect(180 - cameraX * 0.3, 35, 30, 10);
-    ctx.fillRect(200 - cameraX * 0.3, 30, 30, 12);
-
-    ctx.fillStyle = "#3fa34d";
-
-    ctx.fillRect(70 - cameraX * 0.5, 130, 40, 50);
-    ctx.fillRect(220 - cameraX * 0.5, 120, 60, 60);
-    ctx.fillRect(400 - cameraX * 0.5, 140, 50, 40);
-}
-
-function drawPlayer() {
-
-    ctx.fillStyle = "#ff3333";
-
-    ctx.fillRect(
-        player.x - cameraX,
-        player.y,
-        player.w,
-        player.h
-    );
-
-    ctx.fillStyle = "#ffd1a4";
-
-    ctx.fillRect(
-        player.x - cameraX + 3,
-        player.y + 3,
-        8,
-        6
-    );
-
-    ctx.fillStyle = "blue";
-
-    ctx.fillRect(
-        player.x - cameraX + 3,
-        player.y + 10,
-        8,
-        5
-    );
-}
-
-function drawEnemy(enemy) {
-
-    if(enemy.dead) {
-
-        ctx.fillStyle = "#6b3f1d";
-
-        ctx.fillRect(
-            enemy.x - cameraX,
-            enemy.y + 8,
-            enemy.w,
-            5
-        );
-
-        return;
-    }
-
-    if(enemy.type === "blob") {
-
-        ctx.fillStyle = "#8b4513";
-
-        ctx.fillRect(
-            enemy.x - cameraX,
-            enemy.y,
-            enemy.w,
-            enemy.h
-        );
-    }
-
-    if(enemy.type === "roller") {
-
-        ctx.fillStyle = enemy.shell ? "green" : "#00aa66";
-
-        ctx.fillRect(
-            enemy.x - cameraX,
-            enemy.y,
-            enemy.w,
-            enemy.h
-        );
-    }
-}
-
-function draw() {
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    drawBackground();
-
-    for(let y = 0; y < level.length; y++) {
-
-        for(let x = 0; x < level[y].length; x++) {
-
-            const tile = level[y][x];
-
-            const px = x * TILE - cameraX;
-            const py = y * TILE;
-
-            if(tile === "G") {
-                drawTile(px, py, "#b5651d");
-            }
-
-            if(tile === "P") {
-                drawTile(px, py, "#d9983e");
-            }
-        }
-    }
-
-    coins.forEach(c => {
-
-        if(!c.taken) {
-
-            ctx.fillStyle = "gold";
-
-            ctx.fillRect(
-                c.x - cameraX,
-                c.y,
-                8,
-                8
-            );
-        }
-    });
-
-    enemies.forEach(drawEnemy);
-
-    drawPlayer();
-
-    ctx.fillStyle = "white";
-    ctx.font = "10px monospace";
-
-    ctx.fillText("RETRO DASH", 10, 15);
-    ctx.fillText("SCORE: " + player.score, 10, 30);
-}
-
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
-
-loop();
 </script>
+
 </body>
 </html>
-```
-
-## Controls
-
-* Arrow Keys = Move
-* Space = Jump
-
-## Features
-
-* Original retro-inspired platformer
-* Moving enemies
-* Squishing enemies
-* Shell kicking mechanic
-* Coins and score
-* Platforms
-* Pixel graphics
-* Retro beep music
-* Scrolling camera
-* Clouds and hills
